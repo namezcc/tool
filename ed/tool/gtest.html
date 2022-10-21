@@ -1,0 +1,411 @@
+<head>
+	<script src="d3.js" charset="utf-8"></script>
+</head>
+<style>
+	.node circle {
+		stroke: black;
+		stroke-width: 1px;
+	}
+
+	.node text{
+		font-size: 24px;
+		font-family: simsun;
+	}
+
+	.link {
+		stroke: rgb(5, 4, 4);
+		/* stroke:rgb(255, 150, 51); */
+		stroke-width: 2px;
+	}
+ </style>
+<body>
+	
+	<button onclick="gostep()">go</button>
+	<button onclick="backstep()">back</button>
+	<button onclick="showup()">showup</button>
+	<button onclick="showdown()">showdown</button>
+	<button onclick="clearact()">clear</button>
+
+	<script>
+
+	var width  = 1370;	//SVG绘制区域的宽度
+    var height = 670;	//SVG绘制区域的高度
+	var layer_margin_down = 100;
+	var margin_down = 80;
+	var noder = 15;
+	var margin = noder*4;	//横间距
+
+	var norcolor = "rgb(51, 190, 255)";
+	var longcolor = "rgb(255, 150, 51)";
+
+    var svg = d3.select("body")			//选择<body>
+            .append("svg")			//在<body>中添加<svg>
+            .attr("width", width)	//设定<svg>的宽度属性
+            .attr("height", height);//设定<svg>的高度属性
+
+
+	var defs = svg.append("defs");
+	var marker = defs.append( "marker")
+			.attr("id", "arrow" )
+			.attr( "markerUnits", "userSpaceOnUse")
+			.attr( "markerWidth", "24")
+			.attr( "markerHeight","24")
+			.attr("viewBox","0 0 12 12")
+			.attr("refX", "36")
+			.attr("refY", "6")
+			.attr("orient", "auto");
+
+	var arrpath = "M2,2 L10,6 L2,10 L6,6 L2,2";
+	marker.append("path")
+			.attr("d",arrpath)
+			.attr("fill","#000");
+
+
+
+    //1. 确定初始数据
+	var vertex,edges;
+	var loaddown = 0;
+
+	d3.csv("node.csv",function(err,csvdata) {
+		if(err){ 
+			console.log(err);
+			return;
+		} 
+		
+		for (let i = 0; i < csvdata.length; i++) {
+			const el = csvdata[i];
+			el.id = parseInt(el.id);
+			el.l = parseInt(el.l);
+			el.h = parseInt(el.h);
+			el.long = parseInt(el.long);
+		}
+		vertex = csvdata;
+		loaddown = loaddown + 1;
+		if (loaddown >= 2) {
+			drowData();
+		}
+	});
+
+	d3.csv("link.csv",function(err,csv) {
+		if (err) {
+			console.log(err);
+			return;
+		}
+		for (let i = 0; i < csv.length; i++) {
+			const el = csv[i];
+			el.s = parseInt(el.s);
+			el.e = parseInt(el.e);
+			el.long = parseInt(el.long);
+		}
+
+		edges = csv;
+
+		loaddown = loaddown + 1;
+		if (loaddown >= 2) {
+			drowData();
+		}
+	})
+
+	function layernode(data) {
+		var res = [];
+		var layer = {};
+
+		for (let i = 0; i < data.length; i++) {
+			const n = data[i];
+			n.lnode = [];
+			n.blnode = [];
+
+			var g = layer[n.l];
+			if (g == null) {
+				g = {
+					l:[],
+					d:[],
+					h:[],
+				};
+				layer[n.l] = g;
+			}
+
+
+			if (n.long > 0) {
+				g.l.push(n);
+			}else if(n.h > 0){
+				g.h.push(n);
+			}else{
+				g.d.push(n);
+			}
+		}
+
+		for (const k in layer) {
+			var g = layer[k]
+
+			var basey = (k-1)*(layer_margin_down + noder*2*3 + margin_down*2 + noder);
+
+			for (let i = 0; i < g.l.length; i++) {
+				const n = g.l[i];
+				n.x = noder*2*(i+1) + i*margin + margin;
+				n.y = basey + noder;
+				res.push(n);
+			}
+
+			for (let i = 0; i < g.h.length; i++) {
+				const n = g.h[i];
+				n.x = noder + margin/2 + noder*2*(i+1) + i*margin + margin;
+				n.y = basey + noder*2 + margin_down;
+				res.push(n);
+			}
+
+			for (let i = 0; i < g.d.length; i++) {
+				const n = g.d[i];
+				n.x = noder*2*(i+1) + i*margin + margin;
+				n.y = basey + (noder*2 + margin_down)*2;
+				res.push(n);
+			}
+		}
+
+		return res;
+	}
+
+    //数据接口
+
+    function map( nodes, links ){
+        var hash = [];
+        for(var i = 0; i < nodes.length; i++){
+            hash[nodes[i].id] = nodes[i];
+        }
+        var res = [];
+        for(var j = 0; j < links.length; j++){
+			var sn = hash[ links[j].s ];
+			var en = hash[ links[j].e ];
+
+			sn.lnode.push(en.id);
+			en.blnode.push(sn.id);
+
+            res.push({  source: sn,target: en});
+        }
+        return res;
+    }
+
+    gBundle = svg.append("g");
+
+	svg.call(d3.behavior.zoom().on("zoom",function() {
+		var trans = "scale("+ d3.event.scale + ")translate("+d3.event.translate +")";
+		gBundle.attr("transform",trans);
+	}));
+
+    var color = d3.scale.category20c();
+
+	var nodemap = [];
+
+	var darkop = .1;
+
+	function drowData() {
+
+		var nodes = layernode(vertex);
+    	var oLinks = map(nodes, edges);
+
+
+		var link = gBundle.selectAll(".link")
+				.data(oLinks)
+				.enter()
+				.append("line")
+				.attr("class", "link")
+				.attr("opacity",darkop)
+				.attr("marker-end","url(#arrow)")
+				.attr("id",function(d) {
+					return "i"+d.source.id;
+				})
+				.attr("x1",function(d) {return d.source.x;})
+				.attr("y1",function(d) {return d.source.y;})
+				.attr("x2",function(d) {return d.target.x;})
+				.attr("y2",function(d) {return d.target.y;});
+	
+	
+		var node = gBundle.selectAll(".node")
+				.data( nodes )
+				.enter()
+				.append("g")
+				.attr("class", "node")
+				.attr("opacity",function(d) {
+					d.lines = gBundle.selectAll("#i"+d.id);
+					nodemap[d.id] = d3.select(this);
+					nodemap[d.id].lines = d.lines
+					nodemap[d.id].lnode = d.lnode
+					return darkop;
+				})
+				.on("mouseover",function(d) {
+					d3.select(this).attr("opacity",1.);
+					d.lines.attr("opacity",1.);
+
+					for (let i = 0; i < d.lnode.length; i++) {
+						const nd = d.lnode[i];
+						nodemap[nd].attr("opacity",1.);
+					}
+
+					for (let i = 0; i < d.blnode.length; i++) {
+						const nd = d.blnode[i];
+						nodemap[nd].attr("opacity",.5);
+					}
+				})
+				.on("mouseout",function(d) {
+					d3.select(this).attr("opacity",darkop);
+					d.lines.attr("opacity",darkop);
+					for (let i = 0; i < d.lnode.length; i++) {
+						const nd = d.lnode[i];
+						nodemap[nd].attr("opacity",darkop);
+					}
+
+					for (let i = 0; i < d.blnode.length; i++) {
+						const nd = d.blnode[i];
+						nodemap[nd].attr("opacity",darkop);
+					}
+				})
+				.attr("transform", function(d) {
+					return "translate(" + d.x +","+d.y+")";
+				});
+	
+		node.append("circle")
+				.attr("r", 20)
+				.style("fill",function(d,i){ 
+					if (d.long) {
+						// return color(10);
+						return longcolor;
+					}
+					return norcolor; 
+				});
+	
+		node.append("text")
+				.attr("dy",".2em")
+				.style("text-anchor", "middle")
+				.text(function(d) { 
+					return d.id;
+				});
+
+		node.append("text")
+				.attr("dy",".2em")
+				.style("text-anchor", "middle")
+				.text(function(d) { return d.msg;})
+				.attr("transform",function (d) {
+					return "translate(0, "+ (noder + 24) + ")";
+				});
+	}
+
+	var stepdata = null;
+	var stepindex = -1;
+	var acts = null;
+
+	d3.json("step.csv",function(data) {
+		stepdata = data;
+		// console.log(data);
+	})
+
+	d3.json("acts.csv",function(data) {
+		acts = data;
+		console.log(data);
+	})
+
+	function gostep() {
+		if (stepindex + 1 >= stepdata.length) {
+			return;
+		}
+
+		// if (stepindex >= 0) {
+		// 	var lastnodes = stepdata[stepindex];
+		// 	for (let i = 0; i < lastnodes.length; i++) {
+		// 		const node = nodemap[lastnodes[i]];
+		// 		node.attr("opacity",darkop);
+		// 	}
+		// }
+
+		stepindex++;
+		var idx = stepdata[stepindex];
+		for (let i = 0; i < idx.length; i++) {
+			const index = idx[i];
+			var node = nodemap[index];
+			node.attr("opacity",1.);
+		}
+
+		if (stepindex+1 < stepdata.length) {
+			idx = stepdata[stepindex+1];
+			for (let i = 0; i < idx.length; i++) {
+				const index = idx[i];
+				var node = nodemap[index];
+				node.attr("opacity",.5);
+			}
+		}
+
+	}
+
+	function backstep() {
+		if (stepindex <= 0) {
+			return;
+		}
+
+		if (stepindex >= 0) {
+			var lastnodes = stepdata[stepindex];
+			for (let i = 0; i < lastnodes.length; i++) {
+				const node = nodemap[lastnodes[i]];
+				node.attr("opacity",.5);
+			}
+
+			if (stepindex + 1<stepdata.length) {
+				lastnodes = stepdata[stepindex+1];
+				for (let i = 0; i < lastnodes.length; i++) {
+					const node = nodemap[lastnodes[i]];
+					node.attr("opacity",darkop);
+				}
+			}
+		}
+
+		stepindex--;
+		var idx = stepdata[stepindex];
+		for (let i = 0; i < idx.length; i++) {
+			const index = idx[i];
+			var node = nodemap[index];
+			node.attr("opacity",1.);
+		}
+	}
+
+	function showup() {
+		for (let i = 0; i < acts[1].length; i++) {
+			const idx = acts[1][i];
+			const node = nodemap[idx];
+			node.attr("opacity",darkop);
+		}
+
+		for (let i = 0; i < acts[0].length; i++) {
+			const idx = acts[0][i];
+			const node = nodemap[idx];
+			node.attr("opacity",1.);
+		}
+	}
+
+	function showdown() {
+		for (let i = 0; i < acts[0].length; i++) {
+			const idx = acts[0][i];
+			const node = nodemap[idx];
+			node.attr("opacity",darkop);
+		}
+
+		for (let i = 0; i < acts[1].length; i++) {
+			const idx = acts[1][i];
+			const node = nodemap[idx];
+			node.attr("opacity",1.);
+		}
+	}
+
+	function clearact() {
+		console.log("clear")
+		for (let i = 0; i < acts[0].length; i++) {
+			const idx = acts[0][i];
+			const node = nodemap[idx];
+			node.attr("opacity",darkop);
+		}
+		for (let i = 0; i < acts[1].length; i++) {
+			const idx = acts[1][i];
+			const node = nodemap[idx];
+			node.attr("opacity",darkop);
+		}
+	}
+
+	</script>
+</body>

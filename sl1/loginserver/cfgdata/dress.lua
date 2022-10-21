@@ -1,0 +1,28 @@
+local data = {
+	{type=3,id=1,try_id=14601,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=2,try_id=14603,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=3,try_id=14603,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=4,try_id=14604,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=5,try_id=14604,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=6,try_id=14602,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=7,try_id=14605,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=8,try_id=14605,gold=2000,item={{120,1,400}},cheap_rate=75,return_rate=25,glamours=200},
+	{type=3,id=9,try_id=14606,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=10,try_id=14608,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=11,try_id=14608,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=12,try_id=14609,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=13,try_id=14609,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=14,try_id=14607,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=15,try_id=14610,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=16,try_id=14610,gold=2500,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=250},
+	{type=3,id=17,try_id=14611,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=18,try_id=14613,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=19,try_id=14613,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=20,try_id=14614,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=21,try_id=14614,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=22,try_id=14612,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=23,try_id=14615,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+	{type=3,id=24,try_id=14615,gold=3000,item={{120,1,200}},cheap_rate=75,return_rate=25,glamours=300},
+}
+
+return data

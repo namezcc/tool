@@ -1,0 +1,781 @@
+require "split"
+require "class"
+local list = require "list"
+
+ACT_INDEX = 1
+REM_ACT_INDEX = 1
+CELL_AUTO_INDEX = 0
+MAX_LOOP_NUM = 20
+IN_ACTIVE_TICK = 5
+TO_LONG_CELL_TICK = 5
+DEACTIVE_TICK = 10
+
+function add_act_index(idx)
+    if idx then
+        ACT_INDEX = ACT_INDEX + idx
+    else
+        ACT_INDEX = ACT_INDEX + 1
+    end
+end
+
+function add_rem_act_index()
+    REM_ACT_INDEX = REM_ACT_INDEX + 1
+end
+
+function is_inactive(n)
+    return ACT_INDEX - n._acti < IN_ACTIVE_TICK
+end
+
+function is_deactive(n)
+    return ACT_INDEX - n._acti >= DEACTIVE_TICK
+end
+
+function is_link_inactive(lk,wait)
+    if wait then
+        return ACT_INDEX - lk._waiti < IN_ACTIVE_TICK
+    else
+        return ACT_INDEX - lk._acti < IN_ACTIVE_TICK
+    end
+end
+
+function is_in_long_cell(n)
+    local diff = ACT_INDEX - n._acti
+    return diff >= TO_LONG_CELL_TICK and diff < DEACTIVE_TICK
+end
+
+function link(last,n,index)
+    index = index or n._index
+
+    local l = last._link[index]
+
+    if l == nil then
+        l = {
+            _lv = 0,
+            _acti = 0,
+            _waiti = 0,
+            _rem_acti = 0,
+            _n = n,
+            _long_cell = n._long_cell,
+        }
+
+        n._belink = n._belink + 1
+        if last._long_cell == false then
+            if n._msg == nil then
+                if not is_in_long_cell(last) then
+                    n._active_touch = n._active_touch + 1
+                end
+            end
+        else
+            l._from_long_cell = true
+        end
+
+        last._link[index] = l
+    end
+
+    l._lv = l._lv + 1
+end
+
+function is_link( beg,n )
+
+    for i,v in pairs(beg._link) do
+        if v._n == n then
+            return true
+        end
+    end
+
+    return false
+end
+
+function is_touch( lk,fix )
+    local act = lk._rem_acti == REM_ACT_INDEX
+    if fix and is_deactive(lk) == false then
+        act = true
+    end
+    return act
+end
+
+function is_touch_half(n,fix)
+    local act = n._rem_acti == REM_ACT_INDEX
+    if fix and is_deactive(n) == false then
+        act = true
+    end
+    return act and n._active_touch > 1 and n._touch > 0
+end
+
+function is_long_touch( n,fix )
+    local act = n._rem_acti == REM_ACT_INDEX
+    if fix and is_deactive(n) == false then
+        act = true
+    end
+    return act and n._long_touch > 0
+end
+
+function get_act_key( act,n )
+    local key = tostring(n._index)
+    for i,v in ipairs(act) do
+        if not is_in_long_cell(v) then
+            key = key.."-"..v._index
+        end
+    end
+    return key
+end
+
+function rem_touch_cell(lk,fix)
+    local n = lk._n
+
+    local change = lk._rem_acti ~= REM_ACT_INDEX
+    if fix and is_deactive(lk) == false then
+        change = false
+    end
+
+    if change then
+        local nc = n._rem_acti ~= REM_ACT_INDEX
+        if fix and is_deactive(n) == false then
+            nc = false
+        end
+
+        if nc then
+            n._rem_acti = REM_ACT_INDEX
+            n._touch = 0
+            n._long_touch = 0
+        end
+
+        lk._rem_acti = REM_ACT_INDEX
+        if lk._from_long_cell then
+            n._long_touch = n._long_touch + 1
+        else
+            n._touch = n._touch + 1
+        end
+    end
+    
+    return n._touch >= n._active_touch
+end
+
+function cell_active( n,act,fix)
+    local longact = {}
+    local noract = {}
+    local msg = {}
+
+    for k,lk in pairs(n._link) do
+        if lk._n._msg == nil then
+            if lk._long_cell == false then
+                if is_long_touch(lk._n,fix) then
+                    longact[#longact+1] = lk
+                else
+                    if is_touch_half(lk._n,fix) then
+                        noract[#noract+1] = lk
+                    end
+                end
+            end
+        else
+            if is_touch(lk,fix) == false and rem_touch_cell(lk,fix) then
+                msg[#msg+1] = lk
+            end
+        end
+    end
+
+    for i, lk in ipairs(msg) do
+        act[#act+1] = lk._n
+    end
+
+    if #longact > 0 then
+        local link = false
+        for i,lk in ipairs(longact) do
+            if is_touch(lk,fix) == false then
+                if rem_touch_cell(lk,fix)  then
+                    link = true
+                    act[#act+1] = lk._n
+                end
+            else
+                link = true
+            end
+        end
+        if link then
+            return
+        end
+    end
+
+    if #noract > 0 then
+        local link = false
+        for i,lk in ipairs(noract) do
+            if is_touch(lk,fix) == false and rem_touch_cell(lk,fix) then
+                link = true
+                act[#act+1] = lk._n
+            end
+        end
+        if link then
+            return
+        end
+    end
+
+    for k,lk in pairs(n._link) do
+        if lk._n._msg == nil and lk._long_cell == false and is_touch(lk,fix) == false then
+            if rem_touch_cell(lk,fix)  then
+                act[#act + 1] = lk._n
+            end
+        end
+    end
+end
+
+local Long_cell = nil
+
+function get_long_cell()
+    if Long_cell == nil then
+        return nil
+    end
+    
+    if is_in_long_cell(Long_cell) then
+        return Long_cell
+    else
+        Long_cell = nil
+        return nil
+    end
+end
+
+function set_long_cell(n)
+    Long_cell = n
+end
+
+local memroy = class("memroy")
+
+function memroy:ctor(tp)
+    self._type = tp
+    self._testcell = {}
+    self._cell = {}
+    self._msg = {}
+    self._msg_acti = 0
+    self._rem_msg = {}
+    self._msg_func = nil
+    self._long_act_cell = {}
+    self._last_act = {}
+    self._last_act_link = {}
+    self._cash = list.new()
+end
+
+function memroy:set_msg_func( func )
+    self._msg_func = func
+end
+
+function memroy:cell_msg( m,rem )
+    if rem then
+        self._rem_msg[#self._rem_msg+1] = m
+    else
+        self._msg_acti = ACT_INDEX
+        self._msg[#self._msg+1] = m
+    end
+end
+
+function memroy:push_cash( msg )
+    self._cash:push_back(msg)
+    if self._cash:size() > 10 then
+        self._cash:pop_front()
+    end
+end
+
+function memroy:do_msg(rem)
+    if rem == nil and #self._msg > 0 then
+        if ACT_INDEX - self._msg_acti < IN_ACTIVE_TICK then
+            return
+        end
+
+        if self._msg_func then
+            self._msg_func(self._msg,false)
+        end
+        self:push_cash(self._msg)
+        self._msg = {}
+    end
+
+    if #self._rem_msg > 0 then
+        if self._msg_func then
+            self._msg_func(self._rem_msg,true)
+        end
+        self:push_cash(self._rem_msg)
+        self._rem_msg = {}
+    end
+end
+
+function memroy:show_cell()
+    print("mem type ------",self._type,"-------------")
+    for i,v in pairs(self._testcell) do
+        print("index:",v._index,(v._msg or ""),"bl:",v._belink,v._active_touch,(v._long_cell or ""))
+
+        for k,lk in pairs(v._link) do
+            local ln = lk._n
+            -- print("\tkey:",k,"index:",ln._index,(ln._msg or ""))
+            print("\tindex:",ln._index,(ln._msg or ""))
+        end
+
+        print("")
+    end
+end
+
+function memroy:cell()
+    CELL_AUTO_INDEX = CELL_AUTO_INDEX + 1
+
+    local c =  {
+        _msg = nil,
+        _link = {},
+        _acti = ACT_INDEX,          --活动轮次
+        _rem_acti = 0,
+        _belink = 0,        --被连接数
+        _active_touch = 0,  --触发需要激活次数
+        _touch = 0,         --激活次数
+        _long_touch = 0,
+        _index = CELL_AUTO_INDEX,
+        _long_cell = false,
+    }
+
+    local mem = self
+    c.do_msg = function(_s,rem)
+        if c._msg then
+            mem:cell_msg(c._msg,rem)
+        end
+    end
+
+    self._testcell[c._index] = c
+    return c
+end
+
+function memroy:get_root_msg( v )
+    local n = self._cell[v]
+    if n == nil then
+        n = self:cell()
+        n._msg = v
+        self._cell[v] = n
+    end
+    return n
+end
+
+function memroy:get_link_cell( n,index )
+    local lk = n._link[index]
+    if lk == nil then
+        local c = self:cell()
+        if is_in_long_cell(n) then
+            c._acti = 0
+            c._long_cell = true
+        end
+        self:set_active(c)
+        return c
+    end
+    self:set_active(lk._n)
+    return lk._n
+end
+
+function memroy:set_active( n )
+    n._acti = ACT_INDEX
+    n._touch = n._active_touch
+end
+
+function memroy:make_mem(v,lastact,longcell,longlk)
+    local n = self:get_root_msg(v)
+    self:set_active(n)
+
+    local act = {}
+    act[#act+1] = n
+
+    if longlk == nil and longcell ~= nil then
+        local index = get_act_key({},n)
+        longlk = self:get_link_cell(longcell,index)
+        link(longcell,longlk,index)
+        link(longlk,n)
+    end
+
+    if #lastact > 0 then
+        local actindex = get_act_key(lastact,n)
+        local lk = self:get_link_cell(lastact[1],actindex)
+        link(lk,n)
+        
+        if longlk then
+            link(longlk,lk)
+        end
+
+        for i,lc in ipairs(lastact) do
+            link(lc,lk,actindex)
+        end
+        act[#act+1] = lk
+    end
+
+    self:remem(v)
+    return act,longlk
+end
+
+function memroy:set_last_act(act)
+    self._last_act = act
+end
+
+function memroy:get_last_act()
+    local act = {}
+    for i, n in ipairs(self._last_act) do
+        if is_inactive(n) then
+            act[#act+1] = n
+        end
+    end
+    return act
+end
+
+function memroy:get_long_cell()
+    return get_long_cell()
+end
+
+function memroy:set_long_link_cell(n)
+    self._last_long_cell = n
+end
+
+function memroy:get_long_link_cell()
+    if self._last_long_cell == nil then
+        return nil
+    end
+
+    if is_inactive(self._last_long_cell) then
+        return self._last_long_cell
+    else
+        return nil
+    end
+end
+
+function memroy:read_msg( str,idx )
+    local word = Split(str," ")
+
+    for i,w in ipairs(word) do
+        local vec = split_each_char(w)
+
+        if i > 1 then
+            add_act_index(TO_LONG_CELL_TICK)
+            self:run()
+        end
+
+        local lastact = self:get_last_act()
+        local longcell = self:get_long_cell()
+        local longlk = self:get_long_link_cell()
+        
+
+        for i,s in ipairs(vec) do
+            lastact,longlk = self:make_mem(s,lastact,longcell,longlk)
+        end
+
+        self:set_last_act(lastact)
+        self:set_long_link_cell(longlk)
+    end
+
+    if idx then
+        add_act_index(idx)
+        self:run()
+    else
+        add_act_index(TO_LONG_CELL_TICK)
+        self:run()
+        add_act_index(TO_LONG_CELL_TICK)
+        self:run()
+    end
+end
+
+function memroy:read_one_msg( s )
+    local lastact = self:get_last_act()
+    local longcell = self:get_long_cell()
+    local longlk = self:get_long_link_cell()
+    
+    lastact,longlk = self:make_mem(s,lastact,longcell,longlk)
+
+    self:set_last_act(lastact)
+    self:set_long_link_cell(longlk)
+end
+
+function memroy:checkToLongCell()
+    if #self._last_act == 0 then
+        return
+    end
+
+    local long = nil
+    local deactive = false
+    for i, n in ipairs(self._last_act) do
+        if is_deactive(n) then
+            deactive = true
+            break
+        end
+        if is_in_long_cell(n) then
+            if long == nil then
+                long = n
+            else
+                if long._msg then
+                    long = n
+                end
+            end
+        end
+    end
+    if long then
+        set_long_cell(long)
+        self._last_act = {}
+    end
+    if deactive == true then
+        self._last_act = {}
+    end
+end
+
+function memroy:push_active_long_cell(n)
+    self._long_act_cell[#self._long_act_cell+1] = n
+end
+
+function memroy:active_long_cell()
+    if #self._long_act_cell == 0 then
+        return
+    end
+
+    local tab = self._long_act_cell
+    self._long_act_cell = {}
+
+    for i, n in ipairs(tab) do
+        self:rem_node(n)
+        self:do_msg(true)
+    end
+end
+
+function memroy:run()
+    self:checkToLongCell()
+    
+    self:check_link_act()
+    self:do_msg()
+
+    self:active_long_cell()
+end
+
+function memroy:rem_node( n ,fix)
+    if fix == nil then
+        add_rem_act_index()
+    end
+
+    local nextact = {}
+
+    if n._msg then
+        n:do_msg(fix == nil)
+    end
+
+    cell_active(n,nextact,fix)
+
+    while #nextact > 0
+    do
+        local tmplast = {}
+        local tmpnext = {}
+
+        for i,v in ipairs(nextact) do
+            if v._msg then
+                v:do_msg(fix == nil)
+            end
+
+            cell_active(v,tmpnext,fix)
+
+            tmplast[#tmplast+1] = v
+        end
+
+        nextact = tmpnext
+    end
+end
+
+function memroy:check_link_act()
+    if #self._last_act_link == 0 then
+        return
+    end
+
+    if is_link_inactive(self._last_act_link[1],true) then
+        return
+    end
+
+    local lastlink = self._last_act_link
+    self._last_act_link = {}
+    local acttab = {}
+
+    for _, lk in ipairs(lastlink) do
+        if lk._long_cell then
+            self:push_active_long_cell(lk._n)
+        else
+            if is_link_inactive(lk) == false and rem_touch_cell(lk,true) then
+                acttab[#acttab+1] = lk._n
+            end
+        end
+    end
+
+    add_rem_act_index()
+    for i,v in ipairs(acttab) do
+        self:rem_node(v,true)
+    end
+end
+
+function get_active_link(lk1,act,long)
+    local tab = {}
+
+    for _, l1 in ipairs(lk1) do
+        if l1._long_cell == false then
+            if is_link(l1._n,act) then
+                tab[#tab+1] = l1
+            else
+                for k, al in pairs(act._link) do
+                    if l1._n == al._n then
+                        tab[#tab+1] = l1
+                        tab[#tab+1] = al
+                    end
+                end
+            end
+        else
+            long[#long+1] = l1
+        end
+    end
+
+    -- if #tab == 0 then
+    --     for i,lk in ipairs(lk1) do
+    --         if lk._long_cell then
+    --             long[#long+1] = lk
+    --         end 
+    --     end
+    -- end
+    return tab
+end
+
+function link_active(n,res,act)
+    for k, l in pairs(n._link) do
+        if is_link_inactive(l) == false and is_link_inactive(l,true) == false and l._n ~= act then
+            res[#res+1] = l
+            l._waiti = ACT_INDEX
+        end
+    end
+end
+
+function try_touch(n)
+    for k, l in pairs(n._link) do
+        if l._n._active_touch > 1 then
+            touch_cell(l)
+        end
+    end
+end
+
+function touch_cell(lk)
+    local n = lk._n
+
+    if is_link_inactive(lk) == false then
+        if is_inactive(n) == false then
+            n._acti = ACT_INDEX
+            n._touch = 0
+            n._long_touch = 0
+        end
+        lk._acti = ACT_INDEX
+        if lk._from_long_cell then
+            n._long_touch = n._long_touch + 1
+        else
+            n._touch = n._touch + 1
+        end
+    end
+    
+    return n._touch >= n._active_touch
+end
+
+function memroy:remem(s)
+
+    local lastlink = self._last_act_link
+    local longlink = {}
+
+    local act = self:get_root_msg(s)
+    act:do_msg()
+
+    local links = {}
+    link_active(act,links)
+
+    if #lastlink == 0 then
+        lastlink = links
+    else
+        local smlink = get_active_link(lastlink,act,longlink)
+        if #smlink == 0 then
+            lastlink = links
+        else
+            links = {}                      -- 清除?
+            try_touch(act)
+            for _, lk in ipairs(smlink) do
+                if touch_cell(lk) then
+                    link_active(lk._n,links,act)
+                end
+            end
+            lastlink = links
+        end
+    end
+
+    self._last_act_link = lastlink
+
+    for i,lk in ipairs(longlink) do
+        if is_link_inactive(lk) == false and touch_cell(lk) then
+            self:push_active_long_cell(lk._n)
+        end
+    end
+end
+
+function run_memory( mem ,idx)
+    add_act_index(idx)
+    mem:run()
+end
+
+local words = {
+    -- "ab gh",
+    -- "abcdf",
+    -- "ss 111",
+    -- "123",
+    -- "ssss",
+    -- "ss cas",
+    -- "ab cd",
+    -- "cd ab",
+    -- "cx wq",
+    -- "fg fswa",
+    -- "ae iop",
+    -- "iow",
+    -- "s dhj",
+    -- "b dhk",
+    -- "c nm",
+    "cd hjk",
+    -- "acdbe",
+    "cdhjk",
+    
+}
+
+local msggroup = {
+    -- {"a","a"},
+    {"b","b"},
+    -- {"c","c"},
+    -- {"zad ww"},
+    {"cb","sty"}
+}
+
+local memlisten = memroy.new("ls")
+local memtalk = memroy.new("tk")
+
+memlisten:set_msg_func(function( msg,rem )
+    print("listen ---------- ",(rem and "rem" or ""))
+    print(table.concat( msg, ""))
+end)
+
+memtalk:set_msg_func(function( msg,rem )
+    print("talk ---------- rem:",(rem and "rem" or ""))
+    print(table.concat( msg, ""))
+end)
+
+function read_word( tab,mvec )
+    for i,v in ipairs(tab) do
+        for _, m in ipairs(mvec) do
+            m:read_msg(v,TO_LONG_CELL_TICK)
+        end
+        add_act_index(DEACTIVE_TICK)
+    end
+end
+
+function read_vecword( tab,memvec )
+    for i,v in ipairs(tab) do
+        for k,m in ipairs(memvec) do
+            if v[k] then
+                m:read_msg(v[k])
+            end
+        end
+    end
+end
+
+read_word(words,{memlisten})
+-- read_vecword(msggroup,{memlisten,memtalk})
+
+-- memlisten:show_cell()
+-- run_memory(memlisten,10)
+-- memlisten:read_one_msg("6")
+print("********************")
+memlisten:read_msg("cd")
+-- memtalk:run()

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"Lua.diagnostics.disable": [
+			"lowercase-global",
+			"undefined-global",
+			"redundant-parameter"
+		]
+	}
+}

@@ -1,0 +1,25 @@
+local data = {
+	{type=1,index=1,attr={{1,2,0}},weight=2000},
+	{type=1,index=2,attr={{5,2,0}},weight=4000},
+	{type=1,index=3,attr={{6,2,0}},weight=4000},
+	{type=2,index=1,attr={{61,1,0}},weight=1000},
+	{type=2,index=2,attr={{72,1,0}},weight=3000},
+	{type=2,index=3,attr={{29,2,0}},weight=2000},
+	{type=2,index=4,attr={{30,2,0}},weight=4000},
+	{type=3,index=1,attr={{16,1,0}},weight=2000},
+	{type=3,index=2,attr={{25,2,0}},weight=4000},
+	{type=3,index=3,attr={{26,2,0}},weight=4000},
+	{type=4,index=1,attr={{3,2,0}},weight=1000},
+	{type=4,index=2,attr={{73,1,0}},weight=4000},
+	{type=4,index=3,attr={{1,2,0}},weight=3000},
+	{type=4,index=4,attr={{74,1,0}},weight=2000},
+	{type=5,index=1,attr={{27,2,0}},weight=1000},
+	{type=5,index=2,attr={{28,2,0}},weight=4000},
+	{type=5,index=3,attr={{105,1,0}},weight=2000},
+	{type=5,index=4,attr={{1,2,0}},weight=3000},
+	{type=6,index=1,attr={{7,1,0}},weight=2000},
+	{type=6,index=2,attr={{75,1,0}},weight=3500},
+	{type=6,index=3,attr={{1,2,0}},weight=4500},
+}
+
+return data

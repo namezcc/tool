@@ -1,0 +1,12 @@
+.main {
+	min-height: 800px;
+	height: auto;
+}
+
+.fullheight {
+	height: 100%;
+}
+
+.redtext {
+	color: red;
+}

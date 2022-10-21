@@ -1,0 +1,2030 @@
+<meta charset="utf-8">
+<head>
+	<script src="js/d3.js" charset="utf-8"></script>
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<script src="js/jquery-3.6.0.js" charset="utf-8"></script>
+	<script src="js/popper.min.js" charset="utf-8"></script>
+	<script src="js/bootstrap.min.js" charset="utf-8"></script>
+	<script src="js/clipboard.min.js" charset="utf-8"></script>
+</head>
+<style>
+	.all {
+		width: 100%;
+		height: 100%;
+		display: flex;
+	}
+
+	.list {
+		width: 220px;
+		background-color: rgb(182, 182, 182);
+		/* height: 800px; */
+		/* max-height: 600px; */
+		overflow: auto;
+	}
+
+	.edit {
+		width: 300px;
+		background-color: gray;
+	}
+
+	.testai {
+		width: 100%;
+
+	}
+
+	.test_rect {
+		fill-opacity: 0;
+		stroke-width:2px;
+		stroke:red;
+	}
+
+	.main {
+		/* height: 100%; */
+		flex: 1;
+		background-color: rgb(192, 189, 189);
+	}
+
+	.desc {
+		font-size: 15px;
+		color: rgb(153, 152, 152);
+	}
+
+	.np {
+		width: 100px;
+		height: 100px;
+		fill: #ffffff;
+	}
+
+	.node {
+		width: 100px;
+		height: 100px;
+	}
+
+	.nodetext {
+		/* display: inline-block; */
+		/* line-height: 1.2; */
+		/* vertical-align: top; */
+		/* white-space: pre; */
+		/* overflow-wrap: break-word; */
+		/* tab-size: 4; */
+		text-align: left;
+		color: rgb(0, 0, 0);
+		font-size: 15px;
+		pointer-events: none;
+	}
+
+	.addText {
+		font-size: 25px;
+	}
+
+	.imgText {
+		pointer-events: none;
+	}
+
+	.path {
+		stroke: black;
+		stroke-width: 1px;
+	}
+</style>
+<body>
+	<div class="all">
+		<div class="position-fixed" style="z-index: 5; right: 50%; top: 10;">
+			<div id="liveToast" class="toast hide" style="border: 0;" role="alert" aria-live="assertive" aria-atomic="true" data-delay="1500">
+			  <div class="toast-body" style="padding: 0;">
+					<div id="alertinfo" class="alert alert-primary" role="alert">
+
+					</div>
+			  </div>
+			</div>
+		  </div>
+		<div class="list">
+			<div id="save" class="btn-group">
+				<button type="button" class="btn btn-primary" onclick="onSaveData()">保存</button>
+				<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#staticBackdrop">帮助</button>
+				<a href="#" style="visibility: hidden;">下载</a>
+				<div class="modal fade" id="staticBackdrop" data-backdrop="static" data-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+					<div class="modal-dialog">
+					  <div class="modal-content">
+						<div class="modal-header">
+						  <h5 class="modal-title" id="staticBackdropLabel">说明</h5>
+						  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						  </button>
+						</div>
+						<div class="modal-body">
+						  <ul>
+							<li>双击方框添加子节点</li>
+							<li>拖动绿色按钮可以连接子节点,再次连接可以取消连接</li>
+							<li>双击红色按钮删除节点,D 切换连删</li>
+							<li>C 键拷贝节点,X 键拷贝开始的所有子节点,ctrl+V 键粘贴</li>
+							<li>Z 键切换拖拽</li>
+							<li>B 键拷贝参数, ctrl+V 粘贴参数</li>
+						  </ul>
+						</div>
+						<div class="modal-footer">
+						  <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+						</div>
+					  </div>
+					</div>
+				  </div>
+			</div>
+			<div id="ailist">
+				<ul id="ailistgroup" class="list-group">
+
+				</ul>
+			</div>
+			<div>
+				<div style="height: 10px;"></div>
+				<button type="button" class="btn btn-primary" onclick="onAddTree()">添加</button>
+			</div>
+		</div>
+		<div class = "edit">
+			<ul class="list-group" style="visibility: hidden;">
+				<li id="node_id" class="list-group-item">
+					<span>id:</span>
+					<span id="node_id_value">1</span>
+				</li>
+				<li id="node_type" class="list-group-item">
+					<div class="input-group input-group-sm">
+						<div class="input-group-prepend">
+							<span>类型:</span>
+							<span id="node_type_value" style="margin-right: 10px;">动作</span>
+						  <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-expanded="false">
+							<span class="sr-only">Toggle Dropdown</span>
+						  </button>
+						  <div id="type_menu" class="dropdown-menu">
+						  </div>
+						</div>
+						
+					</div>
+					<div id="type_desc" class="desc">
+						
+					</div>
+				</li>
+				<li id="child_weight" class="list-group-item">
+					<div class="input-group input-group-sm">
+						<div class="input-group-prepend">
+						  <span class="input-group-text" id="basic-addon1">随机权重</span>
+						</div>
+						<input id="child_weight_value" type="text" class="form-control" placeholder=":号分割" onkeyup="onSetChild_weight(value)" aria-label="Username" aria-describedby="basic-addon1">
+					</div>
+				</li>
+				<li id="action_type" class="list-group-item">
+					<div class="input-group input-group-sm">
+						<div class="input-group-prepend">
+							<span>条件或动作:</span>
+							<span id="action_type_value" style="margin-right: 10px;">动作1</span>
+						  <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-expanded="false">
+							<span class="sr-only">Toggle Dropdown</span>
+						  </button>
+						  <div id="action_menu" class="dropdown-menu">
+						  </div>
+						</div>
+					</div>
+					<div id="action_desc" class="desc">
+
+					</div>
+				</li>
+				<li id="param" class="list-group-item">
+					<div class="input-group input-group-sm">
+						<div class="input-group-prepend">
+						  <span class="input-group-text">参数</span>
+						</div>
+						<input id="param_value" type="text" class="form-control" placeholder=":号分割" onkeyup="onSetParam(value)">
+					</div>
+				</li>
+				<li id="wait_time" class="list-group-item">
+					<div class="input-group input-group-sm">
+						<div class="input-group-prepend">
+						  <span class="input-group-text">等待时间</span>
+						</div>
+						<input id="wait_time_value" type="text" class="form-control" onkeyup="onSetWaitTime(value)" aria-label="Username" aria-describedby="basic-addon1">
+					</div>
+					<div class="desc">
+						毫秒,只有动作类型的节点生效
+					</div>
+				</li>
+				<li id="desc" class="list-group-item">
+					<div class="input-group input-group-sm">
+						<div class="input-group-prepend">
+						  <span class="input-group-text">描述</span>
+						</div>
+						<input id="desc_value" type="text" class="form-control" placeholder="描述" onkeyup="onSetDesc(value)">
+					</div>
+				</li>
+
+			</ul>
+			<div class="testai">
+				<div class="container">
+					<br>
+					<div>
+						<button id="test_switch" type="button" class="btn btn-info" onclick="startTest()">测试:关</button>
+						<button id="test_autogo" type="button" class="btn btn-info" onclick="setTestAutoGo()">自动前进:关</button>
+					</div>
+					<br>
+					<div>
+						<button type="button" class="btn btn-info" onclick="go_next_node()">前进</button>
+						<button type="button" class="btn btn-light" onclick="actionRes(true)">成功</button>
+						<button type="button" class="btn btn-light" onclick="actionRes(false)">失败</button>
+						<button type="button" class="btn btn-info" onclick="onAiUpdate()">热更</button>
+					</div>
+					<br>
+					<div>
+						<span>搜索id</span>
+						<input id="serchid" type="text" class="form-control" placeholder="id">
+						<button type="button" class="btn btn-info" onclick="onSerchId()">搜索</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="main">
+			
+		</div>
+	</div>
+</body>
+<script>
+
+	const aihost = "http://127.0.0.1/";
+	// const aihost = "http://192.168.10.187/aiedit/";
+
+	var typename = [
+		"动作",
+		"选择",
+		"顺序",
+		"权重随机",
+		"非",
+		"顺序选择",
+		"次数限制",
+		"循环节点",
+		"并行节点",
+		"绝对顺序",
+	];
+
+	var type_desc = [
+		"执行动作或判断的节点,不能有子节点",
+		"按顺序执行子节点直到有一个节点返回成功就返回成功,没有成功的节点则返回失败",
+		"顺序执行子节点直到返回失败则返回失败,所有节点成功才返回成功",
+		"按权重随机执行一个节点,返回执行的结果",
+		"只能有一个子节点,返回与子节点相反的结果",
+		"顺序执行直到返回失败有一个成功就算成功",
+		"指定成功次数,只能有一个子节点,子节点返回成功才算次数 用完之后都返回失败 [1]:次数 [2]:默认0:成功加次数,1:失败加次数",
+		"只能有一个子节点,返回成功继续循环,返回失败则返回失败",
+		"并行执行子节点,有一个子节点返回失败就返回失败,全部成功返回成功",
+		"顺序执行返回最后一个节点的结果",
+	];
+
+	var action_name = {
+		0:"无",
+		21:"播放动作",
+		22:"随机移动",
+		23:"执行巡逻",
+		24:"返回出生点",
+
+		50:"判断是否超过N 分米",
+		51:"判断概率",
+		52:"释放技能",
+		53:"判断是否HP小于N%",
+		54:"追敌人",
+		// 55:"转向敌人",
+		56:"判断是否在N-M 分米",
+		57:"远离敌人",
+		58:"判断是否弱点被击破",
+		59:"落到地上",
+		60:"与目标成角度移动",
+		61:"判断主人距离超N 分米",
+		62:"跟随主人",
+		63:"判断是否受到攻击",
+		64:"切换到脱战ai或战斗ai",
+		65:"判断是否有某个buff",
+		66:"判断技能是否cd",
+		67:"判断视野内是否有敌人",
+		68:"调整释放技能的位置",
+		69:"目标选择",
+	};
+
+	function isCheckAction(act) {
+		if (act == 50 || act == 51 || act==53||
+		act==56 || act==58 || act==61 || act==63 || act==65 || act==66 ||
+		act==67) {
+			return true;
+		}
+		return false;
+	}
+
+	var action_desc = {
+		21:"播放动作 参数 [1]:动作id [2]:持续时间毫秒 [3]:1:是否朝向目标",
+		22:"在出生点随机范围内移动 参数 [1]:半径单位分米",
+		23:"执行巡逻",
+		24:"返回出生点 [1]:速度百分比 0:普通 >100:快速 <100:慢速 [2]:x偏移分米 [3]:y偏移分米 [4]:z偏移分米 [5]:动作id [6]:持续时间秒",
+
+		50:"判断与目标的距离是否超过N分米 参数 [1]:多少分米",
+		51:"随机一下判断概率是否成功 参数 [1]:百分比 [2]:保持结果X秒",
+		52:"释放第几个技能 参数 [1]:技能下标 1开始",
+		53:"判断是否HP小于N% 参数 [1]:百分比",
+		54:"最追敌人直到x分米,最多持续Y秒 参数 [1]:距离多少分米内 [2]:最多持续多少秒 [3]:速度百分比 0:普通 >100:快速 <100:慢速 [4]:动作id",
+		// 55:"转向敌人",
+		56:"判断与目标距离是否在N-M分米 参数 [1]:最小值 [2]:最大值",
+		57:"远离敌人,持续Y秒 参数 [1]:距离多少分米 [2]:持续多少秒 [3]:速度百分比 0:普通 >100:快速 <100:慢速 [4]:模式 0:距离x分米 1:移动x分米 [5]:逃跑cd秒 [6]:动作id",
+		58:"判断是否弱点被击破",
+		59:"掉落到地上 参数 [1]:掉落的速度,分米 [2]:动作id",
+		60:"与目标成一定角度移动 参数 [1]:角度1 0~360 [2]:角度2 [3]:长度分米 [4]:速度百分比 0:普通 >100:快速 <100:慢速 [5]:动作id [6]:持续时间秒",
+		61:"判断主人距离超N分米 [1]:多少分米",
+		62:"跟随主人直到x分米,最多持续Y秒 [1]:距离多少分米内 [2]:速度百分比 0:普通 >100:快速 <100:慢速 [3]:最多持续多少秒",
+		63:"判断是否受到攻击",
+		64:"[1]:0 切换到脱战ai 1切换到战斗ai",
+		65:"判断是否有某个buff [1]:buff的group ID",
+		66:"判断技能是否cd [1]:第几个技能",
+		67:"判断视野内是否有敌人",
+		68:"调整释放技能的位置 [1]:最短距离分米 [2]:最大距离分米 [3]:速度百分比 0:普通 >100:快速 <100:慢速 [4]:前进动作id [5]:后退动作id [6]:持续时间秒 [7]:后退速度百分比 [8]:技能下标读取技能距离",
+		69:"目标选择 [1]:类型 0.仇恨最高 1.最远 2.最近 3.最远远程 4.最远近程 5.最近远程 6.最近近程 7.最高伤害 8.二高伤害 9.最高奶 10.随机 11.debuff [2]:buffid",
+	};
+	
+	var action_color = "#ffffff";
+	var type_color = "#fbd157";
+	// var type_color = "#2c3e50";
+
+	var node_width = 100;
+	var node_height = 100;
+	var maxtree_id = 0;
+	var maxnode_id = 0;
+	var showTreeid = -1;
+	var gBundleX = 0,gBundleY = 0;
+	var gBundleScale = 1;
+
+	var tree_arr = [];
+	var nodelen = 100;
+
+	var nodedata = [];
+	var selectNode = null;
+
+	var linedata = [];
+	var editData = null;
+	var treeNode = null;
+
+	var testnode = [];
+	var testdata = new Map();
+	var intest = false;
+	var inaction = false;
+
+	// 数据编辑 -------->>
+	var eledit = d3.select("body").select(".edit").select(".list-group");
+	var ailist = d3.select("body").select("#ailist").select("#ailistgroup");
+	var test_switch = d3.select("body").select(".edit").select("#test_switch");
+	var test_autogo= d3.select("body").select(".edit").select("#test_autogo");
+
+	function getEditElement(name) {
+		return eledit.select("#"+name).select("#"+name+"_value");
+	}
+
+	function initMenu() {
+		var tpmenu = eledit.select("#type_menu");
+		var actmenu = eledit.select("#action_menu");
+
+		for (let i = 0; i < typename.length; i++) {
+			const name = typename[i];
+			tpmenu.append("a")
+				.attr("class","dropdown-item")
+				.attr("href","#")
+				.attr("onclick","onSetNodeType("+i+")")
+				.text(name);
+		}
+
+		for (const key in action_name) {
+			const name = action_name[key];
+			actmenu.append("a")
+				.attr("class","dropdown-item")
+				.attr("href","#")
+				.attr("onclick","onSetActionType("+key+")")
+				.text(name);
+		}
+	}
+
+	var elnodeid = getEditElement("node_id");
+	var elnodetype = getEditElement("node_type");
+	var elchildweight = getEditElement("child_weight");
+	var elaction = getEditElement("action_type");
+	var elwait = getEditElement("wait_time");
+	var elparam = getEditElement("param");
+	var eldesc = getEditElement("desc");
+
+	var eltypeDesc = eledit.select("#type_desc");
+	var elactionDesc = eledit.select("#action_desc");
+
+	function refTxtTitle(node) {
+		node.select("#txt_type")
+		.text(function (d) {
+			if (d.type == 0) {
+				if (d.action == null) {
+					return "动作:"+d.action;
+				}else
+					return "动作"+d.action+":" + action_name[d.action];
+			}else
+				return typename[d.type];
+		})
+	}
+
+	function onSetNodeType(type) {
+		if (editData) {
+			if (editData.id == 0 && type == 0) {
+				alertInfo("根节点不能是动作节点")
+				return
+			}
+			elnodetype.text(typename[type]);
+			eltypeDesc.text(type_desc[type]);
+
+			editData.type = type;
+			if(type == 0)
+			{
+				editData.action = 21;
+				elaction.text(action_name[editData.action]);
+				elactionDesc.text(action_desc[editData.action]);
+			}
+
+			if (treeNode) {
+				refTxtTitle(treeNode);
+				treeNode.select("rect")
+				.style("fill",type == 0 ? action_color:type_color);
+			}
+		}
+	}
+
+	function onSetActionType(type) {
+		elaction.text(action_name[type]);
+		elactionDesc.text(action_desc[type]);
+		if (editData) {
+			editData.action = type;
+
+			if (treeNode) {
+				refTxtTitle(treeNode);
+			}
+		}
+	}
+
+	function onSetChild_weight(v) {
+		if (editData) {
+			editData.child_weight = v;
+		}
+	}
+
+	function onSetWaitTime(v) {
+		if (editData) {
+			editData.wait = v;
+			if(treeNode)
+				treeNode.select("#nwait").text("w:"+v);
+		}
+	}
+
+	function onSetParam(v) {
+		if (editData) {
+			editData.param = v;
+			if(treeNode)
+				treeNode.select("#nparam").text("p:"+v);
+		}
+	}
+
+	function onSetDesc(v) {
+		if (editData) {
+			editData.desc = v;
+			if (editData.id == 0) {
+				ailist.select("#list-item"+editData.tree_id)
+				.select("#ainame").text(v);
+			}
+
+			if(treeNode)
+				treeNode.select("#txt_desc").text(v);
+		}
+	}
+
+	var jchildweight = $("#child_weight_value");
+	var jwait = $("#wait_time_value");
+	var jparam = $("#param_value");
+	var jdesc = $("#desc_value");
+	var jserch = $("#serchid");
+
+	function refEditData() {
+		if (editData == null) {
+			return;
+		}
+
+		elnodeid.text(editData.id);
+		elnodetype.text(typename[editData.type]);
+		elchildweight.attr("value",editData.child_weight);
+		elaction.text(action_name[editData.action]);
+		elwait.attr("value",editData.wait);
+		elparam.attr("value",editData.param);
+		eldesc.attr("value",editData.desc);
+		eltypeDesc.text(type_desc[editData.type]);
+		elactionDesc.text(action_desc[editData.action]);
+
+		
+		jchildweight.prop("value",editData.child_weight);
+		jwait.prop("value",editData.wait);
+		jparam.prop("value",editData.param);
+		jdesc.prop("value",editData.desc);
+		
+
+	}
+
+	function setEditData(d,node) {
+		if(editData == d)
+			return;
+
+		if (editData == null) {
+			eledit.style("visibility","visible");
+		}
+		editData = d;
+		treeNode = node;
+		refEditData();
+	}
+
+	function clearEditData(id) {
+		if (editData && (editData.id == id || id < 0)) {
+			editData = null;
+			treeNode = null;
+			eledit.style("visibility","hidden");
+		}
+	}
+
+	// 数据编辑 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+	function arrayFind(arr,key,val) {
+		return arr.find(function (v) {
+			return v[key] == val;
+		});
+	}
+
+	function clearArray(arr) {
+		if (arr.length > 0) {
+			arr.splice(0,arr.length);
+		}
+	}
+
+	function arrayRemove(arr,func,once = true) {
+		for (let i = arr.length-1; i >= 0; i--) {
+			const v = arr[i];
+			if (func(v)) {
+				arr.splice(i,1);
+				if(once)
+					return;
+			}
+		}
+	}
+
+	function newNodeData(treeid,id,type,act,desc) {
+		return {
+			tree_id:treeid,
+			id:id,
+			type:type,
+			child_id:[],
+			child_weight:"",
+			action:act,
+			wait:"0",
+			param:"",
+			desc:desc,
+			x:0,
+			y:0,
+			width:node_width,
+			height:node_height,
+			child_node:[],
+			parent_node:[],
+		};
+	}
+
+	function newTree() {
+		maxtree_id++;
+		var treeid = maxtree_id;
+		var ndata = [
+			newNodeData(treeid,0,1,0,"AI名称"),
+		];
+		var tree = {
+			id : treeid,
+			node : ndata,
+		};
+
+		tree_arr.push(tree);
+		return tree;
+	}
+
+	function splitIntArr(str,sp=":") {
+		if(str != "")
+		{
+			var arr = str.split(sp);
+			for (let i = 0; i < arr.length; i++) {
+				if (arr[i] == "") {
+					arr[i] = 0;
+				}else{
+					arr[i] = parseInt(arr[i]);
+				}
+			}
+			return arr;
+		}
+		else
+			return [];
+	}
+
+	function initTreeData(d) {
+		var tree = {
+			id:-1,
+			node:[],
+		};
+
+		d.forEach(arr => {
+			if (arr[0] != tree.id) {
+				if (tree.id >= 0) {
+					tree_arr.push(tree);
+				}
+
+				tree = {
+					id:arr[0],
+					node:[],
+				};
+				if(tree.id > maxtree_id)
+					maxtree_id = tree.id;
+			}
+
+			var child_id = splitIntArr(arr[3]);
+
+			tree.node.push({
+				tree_id:arr[0],
+				id:arr[1],
+				type:arr[2],
+				child_id:child_id,
+				child_weight:arr[4],
+				action:arr[5],
+				wait:arr[6],
+				param:arr[7],
+				desc:arr[8],
+				x:0,
+				y:0,
+				width:node_width,
+				height:node_height,
+				child_node:[],
+				parent_node:[],
+			});
+		});
+
+		if(tree.id > 0)
+			tree_arr.push(tree);
+
+		// console.log(tree_arr);
+
+		showList();
+	}
+
+	function showList() {
+		console.log("showtree size:",tree_arr.length)
+
+		var li = ailist.selectAll(".list-group-item")
+			.data(tree_arr)
+			.enter()
+			.append("li")
+			.attr("id",function (d) {
+				return "list-item"+d.id;
+			})
+			.attr("class","list-group-item")
+			.append("div")
+			.attr("class","row");
+
+		li.append("div")
+		.attr("class","btn-group")
+		.append("button").attr("type","button").attr("class","btn btn-primary dropdown-toggle")
+		.attr("data-toggle","dropdown").text(function(d){return "id:"+d.id})
+		.append("div").attr("class","dropdown-menu")
+		.html(function (d) {
+			return '<button type="button" class="btn btn-danger" onclick="onDeleteTree('+d.id+')">删除</button>';
+		});
+
+		li.append("div")
+		.html(function(d) {
+			var root = d.node[0];
+			return '<button id="ainame" type="button" class="btn btn-primary" ondblclick=onShowTree('+d.id+')>'+root.desc+'</button>';
+		})
+	}
+
+	function onDeleteTree(id) {
+		var idx = tree_arr.findIndex(function (v) {
+			return id == v.id;
+		});
+
+		tree_arr.splice(idx,1);
+		ailist.select("#list-item"+id)
+		.remove();
+		
+		
+		if (showTreeid == id) {
+			showTreeid = -1;
+			nodedata = [];
+			clearTree();
+		}
+	}
+
+	function onAddTree() {
+		var tree = newTree();
+		showList();
+		onShowTree(tree.id);
+	}
+
+	var gBundle = null;
+	var svg = null;
+	var zoom = d3.zoom();
+
+	function onShowTree(id) {
+		if (showTreeid == id) {
+			return
+		}
+
+		clearTree();
+		clearEditData(-1);
+		// console.log("show tree ",id);
+		svg.call(zoom.transform, d3.zoomIdentity);
+		
+		var tree = arrayFind(tree_arr,"id",id);
+		nodedata = tree.node;
+		linedata = [];
+		intest = true;
+		startTest();
+		inaction = false;
+		selectNode = null;
+		initData(nodedata);
+		drowData();
+		showTreeid = id;
+	}
+
+	function onGetData(d) {
+		// console.log(d)
+		initTreeData(d);
+	}
+
+	function onSaveSuccess(msg) {
+		alert(msg)
+		d3.select(".list").select("#save").select("a")
+		.attr("href",aihost+"behavior_tree.cfg")
+		.style("visibility","visible");
+	}
+
+	function buildData(nodearr,data) {
+		nodearr.forEach(nd => {
+			var child_id = nd.child_id.join(":");
+			var line = [nd.tree_id,nd.id,nd.type,child_id,nd.child_weight,nd.action,nd.wait,nd.param,nd.desc];
+			data.push(line.join("\t"));
+		});
+	}
+
+	var checkTime = '0';
+
+	function onSaveData() {
+		console.log("start save")
+		window.fetch(aihost+"ai_check_save.php?time="+checkTime).then(function (res) {
+			return res.json();
+		})
+		.then(data=>{
+			console.log("checktime:",data);
+			if (data.res == 0) {
+				alertInfo("已经有人保存过了,请再开一个网页复制过去在保存");
+			}else{
+				checkTime = data.time;
+				doSaveData();
+			}
+		});
+	}
+
+	function doSaveData() {
+		console.log("start save")
+		var header = new Headers({
+			"Content-Type": "text/plain;charset=utf-8",
+		})
+
+		var data = [];
+		tree_arr.forEach(t => {
+			buildData(t.node,data);
+		});
+
+		var content = data.join("\n");
+
+		// console.log(content);
+		window.fetch(aihost+"ai_save.php",{
+			method:"POST",
+			headers:header,
+			body:content
+		}).then(res=>res.text())
+		.then(msg=>onSaveSuccess(msg))
+	}
+
+	function onAiUpdate() {
+		if (nodedata.length <= 0) {
+			return;
+		}
+
+		var header = new Headers({
+			"Content-Type": "text/plain;charset=utf-8",
+		})
+
+		var data = [];
+		buildData(nodedata,data);
+
+		var content = data.join("\n");
+		// console.log(content);
+		window.fetch(aihost+"ai_update.php",{
+			method:"POST",
+			headers:header,
+			body:content
+		}).then(res=>res.text())
+		.then(msg=>alertInfo(msg))
+	}
+
+	function onSerchId() {
+		let id = parseInt(jserch.val())
+		if (id <= 0) {
+			return
+		}
+		
+		for (let i = 0; i < nodedata.length; i++) {
+			const nd = nodedata[i];
+			if (nd.id == id) {
+				movetestRect(newTestData(nd),null,true);
+				return
+			}
+		}
+
+		alertInfo("没有这个id")
+	}
+
+	function getInitData() {
+		window.fetch(aihost+"ai_read.php").then(function (res) {
+			return res.json()
+		})
+		.then(data=>onGetData(data));
+
+		window.fetch(aihost+"ai_check_save.php?time="+checkTime).then(function (res) {
+			return res.text();
+		})
+		.then(data=>{
+			checkTime = data;
+		});
+	}
+
+	// svg init
+	svg = d3.select(".main")
+			.append("svg")
+			.attr("xmlns","http://www.w3.org/2000/svg")
+			.attr("width","100%")
+			.attr("height","100%");
+
+	gBundle = svg.append("g");
+	var gtree=null;
+	var linkLine = null;
+	var testRect = null;
+
+	svg.call(zoom.on("zoom",function(e) {
+		gBundleX = e.transform.x;
+		gBundleY = e.transform.y;
+		gBundleScale = e.transform.k;
+		gBundle.attr("transform",e.transform.toString());
+	}).on("start",function (e) {
+		// clearEditData(-1);
+		// console.log("zoom start");
+	}))
+	.on("dblclick.zoom",null);
+
+	d3.select("body").on("keydown",function (e) {
+		if (e.key == "c") {
+			copyNode(false);
+		}else if(e.key == "x"){
+			copyNode(true);
+		}else if(e.key == "z"){
+			switchSingleMove();
+		}else if (e.key == "b") {
+			copyParamData();
+		}else if (e.key == "d") {
+			switchLinkDelete();
+		}
+		// else if(e.key == "v"){
+		// 	cloneNode();
+		// }
+	})
+
+	var singleMove = false;
+	var linkDelete = false;
+	var toast = $(".toast");
+	var toastval = d3.select("body").select(".toast-body").select("#alertinfo");
+
+	function alertInfo(s) {
+		toastval.text(s);
+		toast.toast("show");
+	}
+
+	function switchSingleMove() {
+		singleMove = !singleMove;
+		if(singleMove)
+			alertInfo("单独拖动");
+		else
+			alertInfo("取消单独拖动");
+	}
+
+	function switchLinkDelete() {
+		linkDelete = !linkDelete;
+		if(linkDelete)
+			alertInfo("链接删除");
+		else
+			alertInfo("取消链接删除");
+	}
+
+	function clearTree() {
+		gtree = null;
+		if(linkLine)
+			linkLine.remove();
+		gBundle.select("#gtree").remove();
+	}
+
+	function checkHasLink(from,to) {
+		return from.child_id.includes(to.id);
+	}
+
+	function buildLink(from,to,init=false) {
+		if(init == false) {
+			if (checkHasLink(from,to) || checkHasLink(to,from)) {
+				return;
+			}
+			from.child_id.push(to.id);
+		}
+
+		from.child_node.push(to);
+		to.parent_node.push(from);
+		linedata.push({from:from,to:to,index:from.child_node.length});
+	}
+
+	function unbuildLink(from,to) {
+		if (checkHasLink(from,to) == false) {
+			return;
+		}
+
+		arrayRemove(from.child_id,function (v) {
+			return v == to.id;
+		});
+		arrayRemove(from.child_node,function (v) {
+			return v.id == to.id;
+		});
+		arrayRemove(to.parent_node,function (v) {
+			return v.id == from.id;
+		});
+		arrayRemove(linedata,function (v) {
+			if (v.from.id == from.id && v.to.id == to.id) {
+				gtree.select("#l"+v.from.id+"_"+v.to.id).remove();
+				return true;
+			}else
+				return false;
+		});
+	}
+
+	// 位置计算 --------------------------------------------------------------------------------------------
+
+	function moveNodeUp(nd,len) {
+		nd.y -= len;
+		nd.child_node.forEach(cnd => {
+			if (cnd.parent_node.length <= 1 || nd.id == cnd.moveupid) {
+				moveNodeUp(cnd,len);
+			}
+		});
+	}
+
+	var marginy = 50;
+
+	function calcNodePos(nd,px,ty,yarrs,yarre) {
+		var cy = 0;
+		var childys = [];
+		var childye = [];
+		var oldty = ty;
+
+		nd.child_node.forEach(cnd => {
+			if(cnd.x == 0 && cnd.y == 0)
+			{
+				if (cnd.moveupid == undefined) {
+					cnd.moveupid = nd.id;
+				}
+				var cyarrs = [];
+				var cyarre = [];
+				var cny = calcNodePos(cnd,px+250,ty+cy,cyarrs,cyarre);
+
+				var miny = 0;
+
+				for (let i = 0; i < cyarrs.length; i++) {
+					const ys = cyarrs[i];
+					if (i >= childye.length) {
+						childys.push(ys);
+						childye.push(ty);
+					}
+					if(childye[i] > ty)
+					{
+						var diffy = ys - childye[i];
+						if (i == 0 || diffy < miny) {
+							miny = diffy;
+						}
+					}
+				}
+
+				if (miny > 1) {
+					moveNodeUp(cnd,miny);
+				}
+
+				for (let i = 0; i < cyarrs.length; i++) {
+					var ys = cyarrs[i] - miny;
+					if(ys < ty) ty = ys;
+					childye[i] = cyarre[i] - miny;
+					if (ys < childys[i]) {
+						childys[i] = ys;
+					}
+				}
+
+				if(miny < cny)
+				{
+					if(miny > cy)
+						cy = cny;
+					else
+						cy = cy + cny - miny;
+				}
+			}
+		});
+
+		nd.x = px;
+		nd.y = ty;
+		if(cy > 0) 
+		{
+			nd.y += (cy-marginy)/2 - nd.height/2;
+		}
+
+		var diff = ty - oldty;
+		yarrs.push(nd.y - diff);
+		yarre.push(nd.y + nd.height + marginy - diff);
+
+		if (diff < 0) {
+			moveNodeUp(nd,diff);
+		}
+
+		for (let i = 0; i < childys.length; i++) {
+			const ys = childys[i];
+			const ye = childye[i];
+			yarrs.push(ys - diff);
+			yarre.push(ye - diff);
+		}
+
+		// ty += cy;
+		if(cy == 0)
+			return nd.height + marginy;
+		else
+			return cy;
+	}
+
+	function initNodePos(nd,px,ty) {
+		var yarrs = [];
+		var yarre = [];
+		calcNodePos(nd,px,ty,yarrs,yarre);
+	}
+
+	function initData(d) {
+		for (let i = 0; i < d.length; i++) {
+			const nd = d[i];
+			nd.x = 0;
+			nd.y = 0;
+			nd.moveupid = undefined;
+			clearArray(nd.child_node);
+			clearArray(nd.parent_node);
+		}
+
+		for (let i = 0; i < d.length; i++) {
+			const nd = d[i];
+			if (nd.child_id) {
+				nd.child_id.forEach(cid => {
+					var cnd = arrayFind(d,"id",cid);
+					if (cnd) {
+						buildLink(nd,cnd,true);
+					}
+				});
+			}
+		}
+
+		initNodePos(d[0],100,50);
+	}
+
+	var diffx = 0,diffy = 0;
+	var startx = 0,starty = 0;
+	var dragline = [];
+
+	function dragstart(e,d) {
+		var g = d3.select(this);
+		diffx = d.x - e.x;
+		diffy = d.y - e.y;
+		startx = d.x;
+		starty = d.y;
+
+		dragline = [];
+		d.child_node.forEach(cnd=>{
+			dragline.push(gtree.select("#l"+d.id+"_"+cnd.id));
+		});
+		d.parent_node.forEach(pnd => {
+			dragline.push(gtree.selectAll("#l"+pnd.id+"_"+d.id));
+		});
+	}
+
+	function dragon(e,d) {
+		// console.log(d,i,a);
+		var g = d3.select(this);
+		d.x = e.x + diffx;
+		d.y = e.y + diffy;
+		var trans = "translate("+d.x+","+d.y+")";
+		g.attr("transform",trans);
+		dragline.forEach(path => {
+			path.attr("d",function(ld) {
+				return linestring(ld.from,ld.to);
+			});
+		});
+	}
+
+	function getAllChild(d,vecd,vecsvg,check) {
+		d.child_node.forEach(cnd => {
+			if (cnd.x > startx && !check.has(cnd.id)) {
+				check.add(cnd.id);
+				vecd.push(cnd);
+				vecsvg.push(gtree.select("#node"+cnd.id));
+				getAllChild(cnd,vecd,vecsvg,check);
+			}
+		});
+	}
+
+	function updateChildLine(d) {
+		d.child_node.forEach(cnd => {
+			gtree.select("#l"+d.id+"_"+cnd.id)
+			.attr("d",linestring(d,cnd));
+		});
+	}
+
+	function updateChildPos(d) {
+		var vecd = [],vecsvg=[];
+		var check = new Set();
+		getAllChild(d,vecd,vecsvg,check);
+		if (vecd.length == 0) {
+			return
+		}
+		var mx = d.x - startx;
+		var my = d.y - starty;
+
+		for (let i = 0; i < vecd.length; i++) {
+			var nd = vecd[i];
+			var node = vecsvg[i];
+			nd.x += mx;
+			nd.y += my;
+			var trans = "translate("+nd.x+","+nd.y+")";
+			node.attr("transform",trans);
+		}
+		//更新线条
+		updateChildLine(d);
+		vecd.forEach(nd => {
+			updateChildLine(nd);
+		});
+	}
+
+	function dragend(e,d) {
+		console.log("选中节点:",d.id);
+		setEditData(d,d3.select(this));
+		if(singleMove == false)
+			updateChildPos(d);
+
+		setTestNode(d);
+		selectNode = d;
+	}
+
+	function removeNode(d) {
+		var idx = nodedata.findIndex(function (v) {
+			return d.id == v.id;
+		});
+
+		if(idx < 0)
+			return;
+
+		nodedata.splice(idx,1);
+		gtree.select("#node"+d.id)
+		.remove();
+		//父节点删除自己
+		d.parent_node.forEach(pnd => {
+			arrayRemove(pnd.child_id,function (id) {
+				return id == d.id;
+			});
+			arrayRemove(pnd.child_node,function (v) {
+				return v.id == d.id;
+			});
+		});
+		//子节点删除自己
+		d.child_node.forEach(cnd => {
+			arrayRemove(cnd.parent_node,function (v) {
+				return v.id == d.id;
+			})
+		});
+		//删除线条数据
+		arrayRemove(linedata,function (v) {
+			if (v.from.id == d.id || v.to.id == d.id) {
+				gtree.select("#l"+v.from.id+"_"+v.to.id).remove();
+				return true;
+			}else
+				return false;
+		},false);
+	}
+
+	function deleteNode(e,d) {
+		e.stopPropagation();
+		// console.log("delete node");
+		if (d.id == 0) {
+			alertInfo("根节点不能删除");
+			return;
+		}
+
+		if (linkDelete) {
+			var vecd = [],vecsvg=[];
+			var check = new Set();
+			getAllChild(d,vecd,vecsvg,check);
+			for (let i = 0; i < vecd.length; i++) {
+				var nd = vecd[i];
+				removeNode(nd);
+			}
+		}
+		removeNode(d);
+		clearEditData(d.id);
+
+		refTreeData();
+	}
+
+	function getNewNodeId() {
+		var last = nodedata[nodedata.length-1];
+		return last.id + 1;
+	}
+
+	function addSubNode(e,d) {
+		e.stopPropagation();
+		// console.log("add child");
+		if (d.type == 0) {
+			alertInfo("动作节点不能有子节点");
+			return
+		}
+
+		var child = newNodeData(d.tree_id,getNewNodeId(),1,0,"");
+		child.x = d.x + 250;
+		child.y = d.y;
+
+		if (d.child_node.length > 0) {
+			child.y = d.child_node[d.child_node.length-1].y + child.height + marginy;
+		}
+
+		buildLink(d,child);
+		nodedata.push(child);
+
+		refTreeData();
+	}
+
+	function linestring(d1,d2) {
+		var path = d3.path();
+		path.moveTo(d1.x+d1.width,d1.y+d1.height/2);
+		path.lineTo(d2.x,d2.y+d2.height/2);
+		return path.toString();
+	}
+
+	var linkFromNode = null,linkToNode = null;
+
+	function linkDragStart(e,d) {
+		linkFromNode = d;
+	}
+
+	function linkDragMove(e,d) {
+		var path = d3.path();
+		var n = linkFromNode;
+		path.moveTo(linkFromNode.x+linkFromNode.width,linkFromNode.y+linkFromNode.height/2);
+		path.lineTo((e.sourceEvent.offsetX-gBundleX)/gBundleScale,(e.sourceEvent.offsetY-gBundleY)/gBundleScale);
+		linkLine.attr("d",path.toString());
+	}
+
+	function linkDragEnd(e,d) {
+		linkLine.attr("d","");
+		if (linkFromNode != null && linkToNode != null) {
+			if (linkFromNode.id == linkToNode.id || linkToNode.id == 0) {
+				return
+			}
+
+			if (checkHasLink(linkFromNode,linkToNode)) {
+				//删除线条数据
+				unbuildLink(linkFromNode,linkToNode);
+			}else{
+				console.log("link from:"+linkFromNode.id+"to:"+linkToNode.id);
+				buildLink(linkFromNode,linkToNode);
+			}
+			refTreeData();
+		}
+	}
+
+	function linkOver(e,d) {
+		linkToNode = d;
+		// console.log("mouse on ",d.id);
+		// e.stopPropagation();
+	}
+
+	function linkOut(e,d) {
+		// linkToNode = null;
+		// console.log("mouse out ",d.id);
+		// e.stopPropagation();
+	}
+
+	function rectDblClick(e,d) {
+		console.log("rect dblclick");
+	}
+
+	var drag = d3.drag()
+		.on("start",dragstart)
+		.on("drag",dragon)
+		.on("end",dragend);
+
+	var linkDrag = d3.drag()
+		.on("start",linkDragStart)
+		.on("drag",linkDragMove)
+		.on("end",linkDragEnd);
+
+	function refTreeData() {
+		console.log("line size = ",linedata.length)
+
+		var line = gtree.selectAll(".path")
+			.data(linedata)
+			.enter()
+			.append("path")
+			.attr("id",function(d) {
+				return "l"+d.from.id+"_"+d.to.id;
+			})
+			.attr("class", "path")
+			.attr("d",function(d) {
+				return linestring(d.from,d.to);
+			});
+
+			console.log("node size = ",nodedata.length)
+
+		var node = gtree.selectAll(".node")
+			.data(nodedata)
+			.enter()
+			.append("g")
+			.attr("class","node")
+			.attr("transform",function (d) {
+				return "translate("+d.x+","+d.y+")";
+			})
+			.call(drag)
+			.attr("id",function(d) {
+				return "node"+d.id;
+			});
+
+		node.append("rect")
+		.attr("width",node_width)
+		.attr("height",node_height)
+		.attr("class","np")
+		.style("fill",function (d) {
+			if (d.type == 0) {
+				return action_color;
+			}else
+				return type_color;
+		})
+		.on("mouseover",linkOver)
+		.on("mouseout",linkOut)
+		.on("dblclick",addSubNode);
+
+		node.append("text")
+		.attr("id","txt_type")
+		.text(function (d) {
+			if (d.type == 0) {
+				if (d.action == null) {
+					return "动作:"+d.action;
+				}else
+					return "动作"+d.action+":" + action_name[d.action];
+			}else
+				return typename[d.type];
+		})
+		.attr("y",-10)
+		.attr("class","nodetext");
+
+		node.append("text")
+		.attr("id","txt_desc")
+		.text(function (d) {
+			return d.desc;
+		})
+		.attr("y",function (d) {
+			return 15 + d.height;
+		})
+		.attr("class","nodetext");
+
+		node.append("text")
+		.text(function (d) {
+			return "id:"+d.id;
+		})
+		.attr("y",function (d) {
+			return 10 + d.height/2;
+		})
+		.attr("x",function (d) {
+			return -40;
+		})
+		.attr("class","nodetext");
+
+		node.append("text")
+		.attr("id","nparam")
+		.text(function (d) {
+			return "p:"+d.param;
+		})
+		.attr("y",function (d) {
+			return 20;
+		})
+		.attr("class","nodetext");
+
+		node.append("text")
+		.attr("id","nwait")
+		.text(function (d) {
+			return "w:"+d.wait;
+		})
+		.attr("y",function (d) {
+			return 40;
+		})
+		.attr("class","nodetext");
+
+		node.append("circle")
+		.attr("r",8)
+		.attr("cy",function (d) {
+			return d.height-10;
+		})
+		.attr("cx",10)
+		.attr("fill","#FF4500")
+		.on("dblclick",deleteNode);
+
+		node.append("text")
+		.text("x")
+		.attr("x",10-4)
+		.attr("y",function(d) {
+			return d.height - 6;
+		})
+		.attr("class","imgText");
+
+		node.append("circle")
+		.attr("r",10)
+		.attr("cx",node_width-15)
+		.attr("cy",node_height/2)
+		.attr("fill","#00AA55")
+		.call(linkDrag);
+
+		node.append("text")
+		.text("->")
+		.attr("x",node_width - 23)
+		.attr("y",node_height/2+4)
+		.attr("class","imgText");
+	}
+
+	function drowData() {
+		gtree = gBundle.append("g")
+			.attr("id","gtree");
+
+		linkLine = gBundle.append("path").attr("class", "path");
+
+		testRect = gtree.append("rect")
+				.attr("id","test_rect")
+				.attr("class","test_rect")
+				.attr("width",node_width+6)
+				.attr("height",node_height+6);
+
+		refTreeData();
+
+		
+		testRect.attr("x",nodedata[0].x-3)
+			.attr("y",nodedata[0].y-3);
+	}
+
+	var copydata = [];
+
+	function copyNodeData(s) {
+		var n = newNodeData(s.tree_id,s.id,s.type,s.action,s.desc);
+		// n.tree_id=s.treeid;
+		// n.id=s.id;
+		// n.type=s.type;
+		n.child_weight=s.child_weight;
+		// n.action=s.action;
+		n.wait=s.wait;
+		n.param=s.param;
+		// n.desc=s.desc;
+		return n;
+	}
+
+	function copyLoop(nd,src,check) {
+		if (src.child_node.length == 0) {
+			return;
+		}
+
+		src.child_node.forEach(cnd => {
+			if (check.has(cnd.id)) {
+				nd.child_id.push(check.get(cnd.id));
+			}else{
+				var d = copyNodeData(cnd);
+				d.id = copydata.length;
+				copydata.push(d);
+				check.set(cnd.id,d.id);
+				nd.child_id.push(d.id);
+				copyLoop(d,cnd,check);
+			}
+		});
+	}
+
+	function copyNode(loop) {
+		if (selectNode == null) {
+			return;
+		}
+		var s = selectNode;
+
+		if(copydata.length > 0)
+			clearArray(copydata);
+
+		var d = copyNodeData(s);
+		d.id = copydata.length;
+		copydata.push(d);
+
+		if (loop) {
+			var check = new Map();
+			check.set(s.id,d.id);
+			copyLoop(d,s,check);
+		}
+
+		var data = [];
+		buildData(copydata,data);
+		var txt = data.join("\n");
+
+		ClipboardJS.copy(txt);
+		// navigator.clipboard.writeText(txt);
+		alertInfo("已拷贝");
+		// console.log(txt);
+		copydata = [];
+	}
+
+	function parseCloneData(str) {
+		var data = [];
+		var nodearr = str.split("\n");
+		nodearr.forEach(ls => {
+			var arr = ls.split("\t");
+			if (arr.length == 9) {
+				arr[0] = parseInt(arr[0]);
+				arr[1] = parseInt(arr[1]);
+				arr[2] = parseInt(arr[2]);
+				arr[5] = parseInt(arr[5]);
+				arr[6] = parseInt(arr[6]);
+				
+				var child_id = splitIntArr(arr[3]);
+	
+				data.push({
+					tree_id:arr[0],
+					id:arr[1],
+					type:arr[2],
+					child_id:child_id,
+					child_weight:arr[4],
+					action:arr[5],
+					wait:arr[6],
+					param:arr[7],
+					desc:arr[8],
+					x:0,
+					y:0,
+					width:node_width,
+					height:node_height,
+					child_node:[],
+					parent_node:[],
+				})
+			}
+		});
+		return data;
+	}
+
+	window.addEventListener("paste", function (e) {
+      	const clipdata = e.clipboardData || window.clipboardData;
+    //   console.log("主动粘贴", clipdata.getData("text/plain"));
+		if(document.activeElement.tagName == "BODY")
+		{
+			var txt = clipdata.getData("text/plain");
+			if (txt.indexOf("\t") >= 0) {
+				cloneNode(txt);
+			}else{
+				cloneParamData(txt);
+			}
+		}
+    });
+
+	function cloneNode(txt) {
+		// var txt = await navigator.clipboard.readText();
+		copydata = parseCloneData(txt);
+		if (copydata.length == 0) {
+			return
+		}
+
+		var len = nodedata.length
+
+		var startid = getNewNodeId();
+		for (let i = 0; i < copydata.length; i++) {
+			const n = copydata[i];
+			var nd = copyNodeData(n);
+			nd.tree_id = nodedata[0].tree_id;
+			nd.id += startid;
+			n.child_id.forEach(cid => {
+				nd.child_id.push(cid+startid);
+			});
+			nodedata.push(nd);
+		}
+
+		var sub = nodedata.slice(len);
+
+		for (let i = len; i < nodedata.length; i++) {
+			const nd = nodedata[i];
+			nd.child_id.forEach(cid => {
+				var child = arrayFind(sub,"id",cid);
+				if (child) {
+					buildLink(nd,child,true);
+				}
+			});
+		}
+
+		var x = (-gBundleX + 300)/gBundleScale;
+		var y = (-gBundleY + 300)/gBundleScale;
+		initNodePos(nodedata[len],x,y);
+		refTreeData();
+	}
+
+	function copyParamData() {
+		var pstr = [];
+		for (let i = 0; i < nodedata.length; i++) {
+			const nd = nodedata[i];
+			var pvec = splitIntArr(nd.param);
+			for (let j = 0; j < pvec.length; j++) {
+				const val = pvec[j];
+				if (val != 0) {
+					var s = (nd.id*100+j)+":"+val
+					pstr.push(s)
+				}
+			}
+		}
+		var txt = pstr.join("|");
+		ClipboardJS.copy(txt);
+		alertInfo("已拷贝参数");
+	}
+
+	function cloneParamData(txt) {
+		var pvec = txt.split("|");
+		var pmap = new Map();
+		var tempv = [];
+		var lastid = -1;
+		for (let i = 0; i < pvec.length; i++) {
+			var vvec = splitIntArr(pvec[i]);
+			var idx = vvec[0] % 100;
+			var id = Math.floor(vvec[0]/100);
+			if (id != lastid) {
+				if(lastid >= 0)
+					pmap.set(lastid,tempv.join(":"));
+				lastid = id;
+				clearArray(tempv);
+			}
+			while (tempv.length < idx) {
+				tempv.push(0);
+			}
+			tempv.push(vvec[1]);
+		}
+		if (tempv.length > 0) {
+			pmap.set(lastid,tempv.join(":"));
+		}
+
+		for (let i = 0; i < nodedata.length; i++) {
+			const nd = nodedata[i];
+			var pam = pmap.get(nd.id);
+			if(pam){
+				nd.param = pam;
+				gtree.select("#node"+nd.id).select("#nparam").text("p:"+pam);
+			}
+		}
+		// refTreeData();
+	}
+
+	// --------------  测试 ---------------
+	var autogo = false;
+
+	function newTestData(d,idx) {
+		return {
+			nd:d,
+			res:false,
+			index:idx,
+		}
+	}
+
+	function startTest() {
+		if (nodedata.length == 0) {
+			return;
+		}
+		if (intest) {
+			intest = false;
+			test_switch.text("测试:关");
+		}else{
+			intest = true;
+			setTestNode();
+			test_switch.text("测试:开");
+		}
+	}
+
+	function setTestAutoGo() {
+		if(autogo)
+		{
+			test_autogo.text("自动前进:关");
+			autogo = false;
+		}else
+		{
+			test_autogo.text("自动前进:开");
+			autogo = true;
+			if (inaction == false) {
+				go_next_node();
+			}
+		}
+	}
+
+	function setTestNode(nd) {
+		if (inaction || nodedata.length == 0) {
+			return;
+		}
+
+		if(intest == false)
+		{
+			movetestRect(newTestData(nd));
+			return;
+		}
+
+		if (nd == null) {
+			nd = nodedata[0];
+		}else{
+			if(nd.type == 0)
+				return;
+		}
+		testnode = [newTestData(nd,0)];
+		testdata = new Map();
+		movetestRect(testnode[0]);
+	}
+
+	var next_func = [
+		null,
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				if (child.res) {
+					nd.res = true;
+					return null
+				}
+
+				var index = node.child_node.length - 1;
+				for (; index >= 0; index--) {
+					const cnd = node.child_node[index];
+					if (cnd.id == child.nd.id) {
+						break;
+					}
+				}
+				index++;
+
+				return index >= node.child_node.length ? null:node.child_node[index];
+			}else{
+				return node.child_node[0];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				if (child.res == false) {
+					return null
+				}
+
+				var index = node.child_node.length - 1;
+				for (; index >= 0; index--) {
+					const cnd = node.child_node[index];
+					if (cnd.id == child.nd.id) {
+						break;
+					}
+				}
+				index++;
+
+				if (index >= node.child_node.length) {
+					nd.res = true;
+					return null;
+				}else{
+					return node.child_node[index];
+				}
+			}else{
+				return node.child_node[0];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				nd.res = child.res;
+				return null;
+			}else{
+				var index = Math.floor(Math.random()*node.child_node.length);
+				return node.child_node[index];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				nd.res = !child.res;
+				return null;
+			}else{
+				return node.child_node[0];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				if (child.res) {
+					nd.res = true;
+				}else{
+					return null;
+				}
+
+				var index = node.child_node.length - 1;
+				for (; index >= 0; index--) {
+					const cnd = node.child_node[index];
+					if (cnd.id == child.nd.id) {
+						break;
+					}
+				}
+				index++;
+
+				return index >= node.child_node.length ? null:node.child_node[index];
+			}else{
+				return node.child_node[0];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			var param = splitIntArr(node.param);
+			var pnum = param[0];
+			var mode = 0;
+			var num = testdata.get(node.id);
+			if (!num) {
+				num = 0;
+			}
+			if (num >= pnum) {
+				nd.res = false;
+				return null;
+			}
+
+			if (child) {
+				if(param.length > 1) mode = param[1];
+				if(child.res) nd.res = child.res;
+				if ((child.res && mode == 0) || (child.res == false && mode == 1)) {
+					testdata.set(node.id,num+1);
+				}
+				return null
+			}else{
+				return node.child_node[0];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				if (child.res) {
+					return node.child_node[0];
+				}else{
+					nd.res = false;
+					return null;
+				}
+			}else{
+				return node.child_node[0];
+			}
+		},
+		function (nd,child) {
+			var node = nd.nd;
+			if (child) {
+				if (child.res == false) {
+					return null
+				}
+
+				var index = node.child_node.length - 1;
+				for (; index >= 0; index--) {
+					const cnd = node.child_node[index];
+					if (cnd.id == child.nd.id) {
+						break;
+					}
+				}
+				index++;
+
+				if (index >= node.child_node.length) {
+					nd.res = true;
+					return null;
+				}else{
+					return node.child_node[index];
+				}
+			}else{
+				return node.child_node[0];
+			}
+		}
+	];
+
+	function nextNode(nd,child) {
+		var n = nd.nd;
+		if (n.type == 0) {
+			movetestRect(nd,child);
+			return;
+		}
+
+		var node = next_func[n.type](nd,child);
+
+		if (node == null) {
+			if (nd.index == 0) {
+				testnode.splice(nd.index+1,testnode.length-(nd.index+1));
+				nextNode(testnode[0]);
+			}else{
+				movetestRect(testnode[nd.index-1],nd)
+			}
+		}else{
+			testnode.splice(nd.index+1,testnode.length-(nd.index+1));
+			testnode.push(newTestData(node,nd.index+1))
+			movetestRect(testnode[testnode.length-1])
+		}
+	}
+
+	function actionRes(res) {
+		if (inaction || testnode.length == 0 || intest == false) {
+			return
+		}
+		var child= testnode[testnode.length-1];
+		if(child.nd.type != 0)
+			return;
+
+		var nd = testnode[testnode.length-2];
+		child.res = res;
+		movetestRect(nd,child);
+	}
+
+	var snextnode = null;
+	var snextchild = null;
+
+	function go_next_node() {
+		if (inaction || snextnode == null || intest == false) {
+			return
+		}
+		nextNode(snextnode,snextchild);
+		snextnode = null;
+		snextchild = null;
+	}
+
+	function movetestRect(nd,child,move) {
+		var n = nd.nd;
+		var dut = autogo ? 1000:500;
+		if(intest || move==true)
+		{
+			inaction = true;
+			testRect.transition()
+				.attr("x",n.x-3)
+				.attr("y",n.y-3)
+				.duration(dut)
+				.on("end",function () {
+					// console.log("action end");
+					inaction = false;
+					if (n.type == 0) {
+						if (!isCheckAction(n.action)) {
+							actionRes(true);
+						}
+					}else{
+						// nextNode(nd);
+						snextnode = nd;
+						snextchild = child;
+
+						if(autogo)
+						{
+							go_next_node();
+						}
+					}
+				});
+		}else{
+			testRect.attr("x",n.x-3)
+				.attr("y",n.y-3);
+			return;
+		}
+
+		var x = (-n.x + 400/gBundleScale)*gBundleScale;
+		var y = (-n.y + 300/gBundleScale)*gBundleScale;
+
+		var diffx = x-gBundleX;
+		var diffy = y-gBundleY;
+		var absx = 450 - (n.x*gBundleScale+gBundleX);
+		var absy = 250 - (n.y*gBundleScale+gBundleY);
+
+		if ((Math.abs(absx)>400 || Math.abs(absy) > 300)) {
+			var tran = "translate("+x+","+y+") scale("+gBundleScale+")";
+			gBundle.transition()
+				.attr("transform",tran)
+				.duration(dut)
+				.on("end",function () {
+					svg.call(zoom.transform,d3.zoomIdentity
+					.translate(x,y)
+					.scale(gBundleScale));
+				});
+		}
+	}
+	// --------------  测试 <<<<<<<<<<<<<<<
+	
+	initMenu();
+	//获取数据
+	getInitData();
+</script>

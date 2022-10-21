@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "script"
+		}
+	],
+	"settings": {
+		"Lua.diagnostics.disable": [
+			"undefined-global",
+			"lowercase-global"
+		]
+	}
+}

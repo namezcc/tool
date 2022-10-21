@@ -1,0 +1,8 @@
+{
+	"Lua.diagnostics.disable": [
+		"undefined-global",
+		"redundant-parameter",
+		"lowercase-global",
+		"deprecated"
+	]
+}

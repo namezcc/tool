@@ -1,0 +1,126 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"windows": {
+        "options": {
+            "shell": {
+                "executable": "cmd.exe",
+                "args": [
+                    "/d", "/c"
+                ]
+            }
+        }
+    },
+	"problemMatcher":[],
+	"tasks": [
+		{
+			"label": "proto up",
+			"type": "shell",
+			"command": "svn up",
+			"options": {
+				"cwd": "${workspaceFolder}/../../../protobuf"
+			}
+		},
+		{
+			"label": "proto make lua",
+			"type": "shell",
+			"command": "MakeLuaProto.bat np",
+			"options": {
+				"cwd": "${workspaceFolder}/../../../protobuf/tool"
+			}
+		},
+		{
+			"label": "proto make cpp",
+			"type": "shell",
+			"command": "MakeProto.bat np",
+			"options": {
+				"cwd": "${workspaceFolder}/../../../protobuf/tool"
+			}
+		},
+		{
+			"label": "cfg up",
+			"type": "shell",
+			"command": "svn up",
+			"options": {
+				"cwd": "${workspaceFolder}/../cfgdata"
+			}
+		},
+		{
+			"label": "cfg to lua",
+			"type": "shell",
+			"command": "genluacfg.bat np",
+			"options": {
+				"cwd": "${workspaceFolder}/../tool"
+			}
+		},
+		{
+			"label": "msg enum",
+			"type": "shell",
+			"command": "make_msg_enum.bat np",
+			"options": {
+				"cwd": "${workspaceFolder}/../tool"
+			}
+		},
+		{
+			"label": "db file",
+			"type": "shell",
+			"command": "genProtoDb.bat np",
+			"options": {
+				"cwd": "${workspaceFolder}/../tool"
+			}
+		},
+		{
+			"label": "tool up",
+			"type": "shell",
+			"command": "svn up",
+			"options": {
+				"cwd": "${workspaceFolder}/../tool"
+			}
+		},
+		{
+			"label": "lua up",
+			"type": "shell",
+			"command": "svn up",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
+		},
+		{
+			"label": "star all server",
+			"type": "shell",
+			"command": "start.bat",
+			"options": {
+				"cwd": "${workspaceFolder}/../"
+			}
+		},
+		{
+			"label": "star server no login",
+			"type": "shell",
+			"command": "start_nologin.bat",
+			"options": {
+				"cwd": "${workspaceFolder}/../"
+			}
+		},
+		{
+			"label": "stop server",
+			"type": "shell",
+			"command": "stop.bat",
+			"options": {
+				"cwd": "${workspaceFolder}/../"
+			}
+		},
+		{
+			"label": "build proto and cfg",
+			"dependsOn":[
+				"proto up",
+				"proto make lua",
+				"cfg up",
+				"tool up",
+				"cfg to lua",
+				"msg enum",
+			],
+			"dependsOrder": "sequence"
+		}
+	]
+}

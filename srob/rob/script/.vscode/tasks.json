@@ -1,0 +1,44 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"windows": {
+        "options": {
+            "shell": {
+                "executable": "cmd.exe",
+                "args": [
+                    "/d", "/c"
+                ]
+            }
+        }
+    },
+	"problemMatcher":[],
+	"tasks": [
+		{
+			"label": "account1",
+			"type": "shell",
+			"command": "account1.bat",
+			"options": {
+				"cwd": "${workspaceFolder}/../"
+			}
+		},
+		{
+			"label": "account2",
+			"type": "shell",
+			"command": "start Robot.exe",
+			"options": {
+				"cwd": "${workspaceFolder}/../"
+			},
+			"args": ["2"]
+		},
+		{
+			"label": "account3",
+			"type": "shell",
+			"command": "start Robot.exe",
+			"options": {
+				"cwd": "${workspaceFolder}/../"
+			},
+			"args": ["3"]
+		},
+	]
+}
