@@ -1,0 +1,2 @@
+python totxt.py
+pause
